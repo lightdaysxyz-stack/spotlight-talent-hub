@@ -44,7 +44,7 @@ const RoleDetail = () => {
         .select("*")
         .eq("id", id)
         .maybeSingle();
-      setRole(data as RoleRow | null);
+      setRole((data as unknown as RoleRow) ?? null);
       setLoading(false);
 
       if (data && user) {
