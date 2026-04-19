@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { BrutalCard } from "@/components/brutal/BrutalCard";
@@ -31,6 +31,18 @@ const Login = () => {
       (data?.role === "director" ? "/dashboard/director" : "/dashboard/model");
     navigate(target, { replace: true });
   };
+
+  // Auto-redirect if user is already signed in (e.g. returning from Google OAuth)
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      if (sess?.user) redirectByRole();
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) redirectByRole();
+    });
+    return () => sub.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();

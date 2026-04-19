@@ -41,6 +41,7 @@ const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [openAppId, setOpenAppId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -177,56 +178,31 @@ const DirectorDashboard = () => {
               <p className="font-mono mt-2 opacity-70">Share your role and watch the talent roll in.</p>
             </BrutalCard>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {visibleApps.map((a) => {
                 const role = roles.find((r) => r.id === a.role_id);
                 return (
-                  <BrutalCard key={a.id} tone="white" shadow="default" className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 border-[3px] border-foreground bg-secondary overflow-hidden shrink-0">
+                  <BrutalCard key={a.id} tone="white" shadow="default" className="p-4">
+                    <button
+                      onClick={() => setOpenAppId(a.id)}
+                      className="flex items-center gap-4 w-full text-left"
+                    >
+                      <div className="w-14 h-14 border-[3px] border-foreground bg-secondary overflow-hidden shrink-0">
                         {a.profile?.photo_url ? (
                           <img src={a.profile.photo_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full grid place-items-center font-display text-2xl">★</div>
+                          <div className="w-full h-full grid place-items-center font-display text-xl">★</div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-display uppercase text-lg">{a.profile?.name || "Anonymous"}</div>
-                          <span className="font-mono text-xs opacity-60">{a.profile?.city}</span>
-                        </div>
-                        <div className="font-mono text-xs opacity-60 mt-1">For: {role?.title}</div>
-                        {a.cover_note && (
-                          <p className="font-mono text-sm mt-2 line-clamp-2">{a.cover_note}</p>
-                        )}
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {a.portfolio_link && (
-                            <a
-                              href={a.portfolio_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-xs underline decoration-primary decoration-2"
-                            >
-                              Portfolio ↗
-                            </a>
-                          )}
-                          {a.video_url && <AuditionLink path={a.video_url} />}
+                        <div className="font-display uppercase text-lg leading-tight">{a.profile?.name || "Anonymous"}</div>
+                        <div className="font-mono text-xs opacity-60 mt-0.5 truncate">
+                          For: {role?.title}{a.profile?.city ? ` · ${a.profile.city}` : ""}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <select
-                          value={a.status}
-                          onChange={(e) => updateAppStatus(a.id, e.target.value as AppRow["status"])}
-                          className="h-9 px-2 bg-background border-[3px] border-foreground font-display uppercase text-xs focus:outline-none"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="shortlisted">Shortlist</option>
-                          <option value="selected">Select ★</option>
-                          <option value="rejected">Reject</option>
-                        </select>
-                        <StatusBadge status={a.status} />
-                      </div>
-                    </div>
+                      <StatusBadge status={a.status} />
+                      <span className="font-display text-2xl shrink-0">→</span>
+                    </button>
                   </BrutalCard>
                 );
               })}
@@ -234,6 +210,19 @@ const DirectorDashboard = () => {
           )}
         </div>
       </section>
+
+      {openAppId && (() => {
+        const app = apps.find((a) => a.id === openAppId);
+        if (!app) return null;
+        return (
+          <ApplicantModal
+            app={app}
+            role={roles.find((r) => r.id === app.role_id)}
+            onClose={() => setOpenAppId(null)}
+            onStatusChange={(status) => updateAppStatus(openAppId, status)}
+          />
+        );
+      })()}
 
       {showForm && <PostRoleModal onClose={() => setShowForm(false)} onCreated={() => { setShowForm(false); load(); }} />}
     </SiteLayout>
@@ -261,18 +250,150 @@ const StatusBadge = ({ status }: { status: AppRow["status"] }) => {
   return <BrutalBadge tone={tone} className="text-[10px]">{label}</BrutalBadge>;
 };
 
-const AuditionLink = ({ path }: { path: string }) => {
+const AuditionPlayer = ({ path }: { path: string }) => {
   const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const isExternal = /^https?:\/\//i.test(path);
+
   useEffect(() => {
-    supabase.storage.from("auditions").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
+    if (isExternal) {
+      setUrl(path);
+      return;
+    }
+    supabase.storage.from("auditions").createSignedUrl(path, 3600).then(({ data, error: e }) => {
+      if (e) setError(e.message);
+      else if (data?.signedUrl) setUrl(data.signedUrl);
     });
-  }, [path]);
-  if (!url) return <span className="font-mono text-xs opacity-50">Loading video…</span>;
+  }, [path, isExternal]);
+
+  if (error) {
+    return (
+      <div className="p-4 border-[3px] border-destructive bg-destructive/10 font-mono text-sm">
+        Could not load audition: {error}
+      </div>
+    );
+  }
+  if (!url) {
+    return <div className="aspect-video border-[3px] border-foreground bg-secondary/30 grid place-items-center font-mono text-sm animate-pulse">Loading audition…</div>;
+  }
+
+  // External non-video links (YouTube, Vimeo, portfolio site, etc.) → just link out
+  const looksLikeVideoFile = /\.(mp4|webm|mov|m4v|ogg)(\?|$)/i.test(url);
+  if (isExternal && !looksLikeVideoFile) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="block p-6 border-[3px] border-foreground bg-secondary/30 font-display uppercase text-center hover:bg-secondary"
+      >
+        Open Audition Link ↗
+      </a>
+    );
+  }
+
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="font-mono text-xs underline decoration-primary decoration-2">
-      Watch Audition ↗
-    </a>
+    <video
+      controls
+      src={url}
+      className="w-full aspect-video border-[3px] border-foreground bg-foreground"
+    >
+      Your browser does not support the video tag.
+    </video>
+  );
+};
+
+const ApplicantModal = ({
+  app,
+  role,
+  onClose,
+  onStatusChange,
+}: {
+  app: AppRow;
+  role?: RoleRow;
+  onClose: () => void;
+  onStatusChange: (status: AppRow["status"]) => void;
+}) => {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-foreground/70 animate-hard-in overflow-y-auto">
+      <BrutalCard tone="white" shadow="lg" className="w-full max-w-2xl p-6 relative my-8">
+        <button
+          onClick={onClose}
+          className="absolute -top-3 -right-3 w-10 h-10 bg-foreground text-background border-[3px] border-foreground grid place-items-center"
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 border-[3px] border-foreground bg-secondary overflow-hidden shrink-0">
+            {app.profile?.photo_url ? (
+              <img src={app.profile.photo_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full grid place-items-center font-display text-3xl">★</div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-3xl uppercase leading-tight">{app.profile?.name || "Anonymous"}</h3>
+            <div className="font-mono text-xs opacity-60 mt-1">
+              {app.profile?.city || "Unknown city"} · Applied for: <span className="font-display uppercase">{role?.title}</span>
+            </div>
+            <div className="mt-2"><StatusBadge status={app.status} /></div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="font-display uppercase text-xs mb-2">Audition</div>
+          {app.video_url ? (
+            <AuditionPlayer path={app.video_url} />
+          ) : (
+            <div className="p-6 border-[3px] border-foreground bg-secondary/20 font-mono text-sm text-center opacity-70">
+              No audition submitted.
+            </div>
+          )}
+        </div>
+
+        {app.cover_note && (
+          <div className="mt-5">
+            <div className="font-display uppercase text-xs mb-2">Cover Note</div>
+            <p className="font-mono text-sm whitespace-pre-wrap p-3 border-[3px] border-foreground bg-background">
+              {app.cover_note}
+            </p>
+          </div>
+        )}
+
+        {app.portfolio_link && (
+          <div className="mt-5">
+            <div className="font-display uppercase text-xs mb-2">Portfolio</div>
+            <a
+              href={app.portfolio_link}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-sm underline decoration-primary decoration-2 break-all"
+            >
+              {app.portfolio_link} ↗
+            </a>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3 pt-5 border-t-[3px] border-foreground">
+          <div className="font-display uppercase text-xs">Set Status:</div>
+          <select
+            value={app.status}
+            onChange={(e) => onStatusChange(e.target.value as AppRow["status"])}
+            className="h-10 px-3 bg-background border-[3px] border-foreground font-display uppercase text-sm focus:outline-none"
+          >
+            <option value="pending">Pending</option>
+            <option value="shortlisted">Shortlist</option>
+            <option value="selected">Select ★</option>
+            <option value="rejected">Reject</option>
+          </select>
+          <BrutalButton variant="outline" size="md" onClick={onClose} className="ml-auto">
+            Close
+          </BrutalButton>
+        </div>
+      </BrutalCard>
+    </div>
   );
 };
 
