@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { BrutalCard } from "@/components/brutal/BrutalCard";
 import { BrutalButton } from "@/components/brutal/BrutalButton";
 import { BrutalBadge } from "@/components/brutal/BrutalBadge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,31 +15,57 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
 
-  const handle = (e: React.FormEvent) => {
+  const redirectByRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const target =
+      from ||
+      (data?.role === "director" ? "/dashboard/director" : "/dashboard/model");
+    navigate(target, { replace: true });
+  };
+
+  const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(false);
-    setTimeout(() => {
-      setLoading(false);
-      if (!email.includes("@") || pw.length < 4) {
-        setError(true);
-        toast({
-          title: "ACCESS DENIED",
-          description: "Check your email and password — try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({ title: "WELCOME BACK ★", description: "Connect Lovable Cloud to enable real auth." });
-      navigate("/");
-    }, 600);
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password: pw });
+    setLoading(false);
+    if (err) {
+      setError(true);
+      toast({
+        title: "ACCESS DENIED",
+        description: err.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: "WELCOME BACK ★", description: "Spotlight is on you." });
+    await redirectByRole();
+  };
+
+  const google = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/login",
+    });
+    if (result.error) {
+      toast({ title: "Google sign-in failed", description: String(result.error), variant: "destructive" });
+      return;
+    }
+    if (result.redirected) return;
+    await redirectByRole();
   };
 
   return (
     <SiteLayout>
       <section className="relative min-h-[calc(100vh-180px)] grid lg:grid-cols-2">
-        {/* Left visual — diagonal stripes */}
         <div className="hidden lg:block relative stripes-yellow-black">
           <div className="absolute inset-0 grain" />
           <div className="absolute inset-0 grid place-items-center">
@@ -51,7 +79,6 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Form */}
         <div className="grid place-items-center p-6 md:p-12 bg-background">
           <BrutalCard tone="white" shadow="default" className="w-full max-w-md p-8">
             <h1 className="font-display text-4xl uppercase">Login</h1>
@@ -60,33 +87,18 @@ const Login = () => {
             </p>
 
             <form onSubmit={handle} className={`space-y-4 ${error ? "animate-shake" : ""}`}>
-              <Field
-                label="Email"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                error={error}
-                placeholder="you@spotlight.in"
-              />
-              <Field
-                label="Password"
-                type="password"
-                value={pw}
-                onChange={setPw}
-                error={error}
-              />
+              <Field label="Email" type="email" value={email} onChange={setEmail} error={error} placeholder="you@spotlight.in" />
+              <Field label="Password" type="password" value={pw} onChange={setPw} error={error} />
               <BrutalButton type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
                 {loading ? "Loading…" : "Enter Stage →"}
               </BrutalButton>
 
               <div className="relative my-2 text-center">
-                <span className="bg-background px-3 font-mono text-xs uppercase tracking-widest relative z-10">
-                  or
-                </span>
+                <span className="bg-background px-3 font-mono text-xs uppercase tracking-widest relative z-10">or</span>
                 <div className="absolute left-0 right-0 top-1/2 h-[3px] bg-foreground -z-0" />
               </div>
 
-              <BrutalButton type="button" variant="outline" size="lg" className="w-full">
+              <BrutalButton type="button" variant="outline" size="lg" className="w-full" onClick={google}>
                 <span className="text-lg">G</span> Continue with Google
               </BrutalButton>
             </form>
@@ -105,20 +117,8 @@ const Login = () => {
 };
 
 const Field = ({
-  label,
-  type,
-  value,
-  onChange,
-  error,
-  placeholder,
-}: {
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  error?: boolean;
-  placeholder?: string;
-}) => (
+  label, type, value, onChange, error, placeholder,
+}: { label: string; type: string; value: string; onChange: (v: string) => void; error?: boolean; placeholder?: string; }) => (
   <label className="block">
     <div className="font-display uppercase text-xs mb-2">{label}</div>
     <input
@@ -127,9 +127,7 @@ const Field = ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`w-full h-12 px-3 bg-background border-[3px] font-mono text-sm focus:outline-none focus:bg-secondary/50 ${
-        error ? "border-destructive" : "border-foreground"
-      }`}
+      className={`w-full h-12 px-3 bg-background border-[3px] font-mono text-sm focus:outline-none focus:bg-secondary/50 ${error ? "border-destructive" : "border-foreground"}`}
     />
   </label>
 );

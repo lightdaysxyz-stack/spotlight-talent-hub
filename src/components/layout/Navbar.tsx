@@ -1,15 +1,28 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { BrutalButton } from "@/components/brutal/BrutalButton";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const { user, role, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const dashboardPath = role === "director" ? "/dashboard/director" : "/dashboard/model";
 
   const links = [
     { to: "/roles", label: "Open Roles" },
     { to: "/pricing", label: "Pricing" },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({ title: "Signed out", description: "See you on stage soon." });
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b-[4px] border-foreground">
@@ -40,12 +53,25 @@ export const Navbar = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <BrutalButton asChild variant="outline" size="sm">
-            <Link to="/login">Login</Link>
-          </BrutalButton>
-          <BrutalButton asChild variant="primary" size="sm">
-            <Link to="/signup">Get Started</Link>
-          </BrutalButton>
+          {user ? (
+            <>
+              <BrutalButton asChild variant="yellow" size="sm">
+                <Link to={dashboardPath}><LayoutDashboard size={14} /> Dashboard</Link>
+              </BrutalButton>
+              <BrutalButton variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut size={14} /> Logout
+              </BrutalButton>
+            </>
+          ) : (
+            <>
+              <BrutalButton asChild variant="outline" size="sm">
+                <Link to="/login">Login</Link>
+              </BrutalButton>
+              <BrutalButton asChild variant="primary" size="sm">
+                <Link to="/signup">Get Started</Link>
+              </BrutalButton>
+            </>
+          )}
         </div>
 
         <button
@@ -71,12 +97,25 @@ export const Navbar = () => {
               </Link>
             ))}
             <div className="flex gap-3 pt-2">
-              <BrutalButton asChild variant="outline" size="sm" className="flex-1">
-                <Link to="/login">Login</Link>
-              </BrutalButton>
-              <BrutalButton asChild variant="primary" size="sm" className="flex-1">
-                <Link to="/signup">Get Started</Link>
-              </BrutalButton>
+              {user ? (
+                <>
+                  <BrutalButton asChild variant="yellow" size="sm" className="flex-1">
+                    <Link to={dashboardPath} onClick={() => setOpen(false)}>Dashboard</Link>
+                  </BrutalButton>
+                  <BrutalButton variant="outline" size="sm" className="flex-1" onClick={() => { setOpen(false); handleSignOut(); }}>
+                    Logout
+                  </BrutalButton>
+                </>
+              ) : (
+                <>
+                  <BrutalButton asChild variant="outline" size="sm" className="flex-1">
+                    <Link to="/login" onClick={() => setOpen(false)}>Login</Link>
+                  </BrutalButton>
+                  <BrutalButton asChild variant="primary" size="sm" className="flex-1">
+                    <Link to="/signup" onClick={() => setOpen(false)}>Get Started</Link>
+                  </BrutalButton>
+                </>
+              )}
             </div>
           </div>
         </div>
