@@ -178,56 +178,31 @@ const DirectorDashboard = () => {
               <p className="font-mono mt-2 opacity-70">Share your role and watch the talent roll in.</p>
             </BrutalCard>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {visibleApps.map((a) => {
                 const role = roles.find((r) => r.id === a.role_id);
                 return (
-                  <BrutalCard key={a.id} tone="white" shadow="default" className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 border-[3px] border-foreground bg-secondary overflow-hidden shrink-0">
+                  <BrutalCard key={a.id} tone="white" shadow="default" className="p-4">
+                    <button
+                      onClick={() => setOpenAppId(a.id)}
+                      className="flex items-center gap-4 w-full text-left"
+                    >
+                      <div className="w-14 h-14 border-[3px] border-foreground bg-secondary overflow-hidden shrink-0">
                         {a.profile?.photo_url ? (
                           <img src={a.profile.photo_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full grid place-items-center font-display text-2xl">★</div>
+                          <div className="w-full h-full grid place-items-center font-display text-xl">★</div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-display uppercase text-lg">{a.profile?.name || "Anonymous"}</div>
-                          <span className="font-mono text-xs opacity-60">{a.profile?.city}</span>
-                        </div>
-                        <div className="font-mono text-xs opacity-60 mt-1">For: {role?.title}</div>
-                        {a.cover_note && (
-                          <p className="font-mono text-sm mt-2 line-clamp-2">{a.cover_note}</p>
-                        )}
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {a.portfolio_link && (
-                            <a
-                              href={a.portfolio_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-xs underline decoration-primary decoration-2"
-                            >
-                              Portfolio ↗
-                            </a>
-                          )}
-                          {a.video_url && <AuditionLink path={a.video_url} />}
+                        <div className="font-display uppercase text-lg leading-tight">{a.profile?.name || "Anonymous"}</div>
+                        <div className="font-mono text-xs opacity-60 mt-0.5 truncate">
+                          For: {role?.title}{a.profile?.city ? ` · ${a.profile.city}` : ""}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <select
-                          value={a.status}
-                          onChange={(e) => updateAppStatus(a.id, e.target.value as AppRow["status"])}
-                          className="h-9 px-2 bg-background border-[3px] border-foreground font-display uppercase text-xs focus:outline-none"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="shortlisted">Shortlist</option>
-                          <option value="selected">Select ★</option>
-                          <option value="rejected">Reject</option>
-                        </select>
-                        <StatusBadge status={a.status} />
-                      </div>
-                    </div>
+                      <StatusBadge status={a.status} />
+                      <span className="font-display text-2xl shrink-0">→</span>
+                    </button>
                   </BrutalCard>
                 );
               })}
@@ -235,6 +210,19 @@ const DirectorDashboard = () => {
           )}
         </div>
       </section>
+
+      {openAppId && (() => {
+        const app = apps.find((a) => a.id === openAppId);
+        if (!app) return null;
+        return (
+          <ApplicantModal
+            app={app}
+            role={roles.find((r) => r.id === app.role_id)}
+            onClose={() => setOpenAppId(null)}
+            onStatusChange={(status) => updateAppStatus(openAppId, status)}
+          />
+        );
+      })()}
 
       {showForm && <PostRoleModal onClose={() => setShowForm(false)} onCreated={() => { setShowForm(false); load(); }} />}
     </SiteLayout>
