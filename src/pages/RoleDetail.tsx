@@ -1,25 +1,135 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Upload, X } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { BrutalCard } from "@/components/brutal/BrutalCard";
 import { BrutalBadge } from "@/components/brutal/BrutalBadge";
 import { BrutalButton } from "@/components/brutal/BrutalButton";
-import { getRole } from "@/data/roles";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { formatINR, ROLE_TYPE_LABEL, DbRoleType } from "@/lib/format";
 
-const formatINR = (n: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+interface RoleRow {
+  id: string;
+  title: string;
+  description: string;
+  pay_rate: number;
+  location: string;
+  type: DbRoleType;
+  deadline: string | null;
+  requirements: { label: string; value: string }[] | null;
+  director_id: string;
+}
 
 const RoleDetail = () => {
   const { id } = useParams();
-  const role = id ? getRole(id) : undefined;
   const { toast } = useToast();
+  const { user, role: userRole } = useAuth();
+  const navigate = useNavigate();
+  const [role, setRole] = useState<RoleRow | null>(null);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [coverNote, setCoverNote] = useState("");
   const [portfolio, setPortfolio] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const { data } = await supabase
+        .from("roles")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      setRole(data as RoleRow | null);
+      setLoading(false);
+
+      if (data && user) {
+        const { data: app } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("role_id", id)
+          .eq("model_id", user.id)
+          .maybeSingle();
+        setAlreadyApplied(!!app);
+      }
+    })();
+  }, [id, user]);
+
+  const openModal = () => {
+    if (!user) {
+      toast({ title: "Login required", description: "Sign in as a model to apply." });
+      navigate("/login", { state: { from: `/roles/${id}` } });
+      return;
+    }
+    if (userRole !== "model") {
+      toast({ title: "Models only", description: "Casting directors can't apply to roles.", variant: "destructive" });
+      return;
+    }
+    if (alreadyApplied) {
+      toast({ title: "Already applied", description: "You've submitted for this role." });
+      return;
+    }
+    setOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !role) return;
+
+    if (file && file.size > 100 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 100MB.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    let videoUrl: string | null = null;
+
+    try {
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${role.id}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("auditions")
+          .upload(path, file, { upsert: false });
+        if (upErr) throw upErr;
+        videoUrl = path;
+      }
+
+      const { error } = await supabase.from("applications").insert({
+        role_id: role.id,
+        model_id: user.id,
+        video_url: videoUrl,
+        cover_note: coverNote,
+        portfolio_link: portfolio || null,
+      });
+      if (error) throw error;
+
+      setOpen(false);
+      setCoverNote("");
+      setPortfolio("");
+      setFile(null);
+      setAlreadyApplied(true);
+      toast({
+        title: "AUDITION SUBMITTED ★",
+        description: "The casting team will review shortly. JUNOON dikhaya!",
+      });
+    } catch (err: any) {
+      toast({ title: "Submission failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SiteLayout>
+        <div className="container py-32 text-center font-display text-2xl uppercase animate-pulse">Loading…</div>
+      </SiteLayout>
+    );
+  }
 
   if (!role) {
     return (
@@ -35,21 +145,7 @@ const RoleDetail = () => {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setOpen(false);
-      setCoverNote("");
-      setPortfolio("");
-      setFileName("");
-      toast({
-        title: "AUDITION SUBMITTED ★",
-        description: "The casting team will review your submission shortly. JUNOON dikhaya!",
-      });
-    }, 900);
-  };
+  const requirements = role.requirements ?? [];
 
   return (
     <SiteLayout>
@@ -61,42 +157,38 @@ const RoleDetail = () => {
         <div className="grid lg:grid-cols-[1fr_360px] gap-10">
           <div>
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <BrutalBadge tone="black">{role.type}</BrutalBadge>
+              <BrutalBadge tone="black">{ROLE_TYPE_LABEL[role.type]}</BrutalBadge>
               <BrutalBadge tone="yellow">{role.location}</BrutalBadge>
-              {role.tags.map((t) => (
-                <BrutalBadge key={t} tone="white">{t}</BrutalBadge>
-              ))}
             </div>
-            <h1 className="font-display text-4xl md:text-6xl uppercase leading-[0.95]">
-              {role.title}
-            </h1>
-            <p className="font-mono text-muted-foreground mt-3">{role.studio}</p>
+            <h1 className="font-display text-4xl md:text-6xl uppercase leading-[0.95]">{role.title}</h1>
 
             <div className="mt-10">
               <h2 className="font-display text-2xl uppercase mb-3">The Brief</h2>
-              <p className="font-mono leading-relaxed">{role.description}</p>
+              <p className="font-mono leading-relaxed whitespace-pre-line">{role.description}</p>
             </div>
 
-            <div className="mt-10">
-              <h2 className="font-display text-2xl uppercase mb-3">Requirements</h2>
-              <ul className="space-y-2">
-                {role.requirements.map((r) => (
-                  <li key={r.label} className="flex items-center gap-3 font-mono">
-                    <span className="w-5 h-5 bg-secondary border-[3px] border-foreground inline-block" />
-                    <span className="font-display uppercase text-sm w-32">{r.label}</span>
-                    <span>{r.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {requirements.length > 0 && (
+              <div className="mt-10">
+                <h2 className="font-display text-2xl uppercase mb-3">Requirements</h2>
+                <ul className="space-y-2">
+                  {requirements.map((r, i) => (
+                    <li key={i} className="flex items-center gap-3 font-mono">
+                      <span className="w-5 h-5 bg-secondary border-[3px] border-foreground inline-block" />
+                      <span className="font-display uppercase text-sm w-32">{r.label}</span>
+                      <span>{r.value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <aside className="lg:sticky lg:top-28 self-start">
             <BrutalCard tone="white" shadow="pink" className="p-6">
-              <div className="font-display text-primary text-4xl">{formatINR(role.pay)}</div>
+              <div className="font-display text-primary text-4xl">{formatINR(role.pay_rate)}</div>
               <div className="font-mono text-xs uppercase tracking-widest opacity-60 mb-5">per day</div>
-              <BrutalButton variant="primary" size="lg" className="w-full" onClick={() => setOpen(true)}>
-                Submit Audition
+              <BrutalButton variant="primary" size="lg" className="w-full" onClick={openModal} disabled={alreadyApplied}>
+                {alreadyApplied ? "Already Applied ★" : "Submit Audition"}
               </BrutalButton>
               <p className="font-mono text-xs mt-4 opacity-70">
                 You must be logged in as a MODEL to apply. One submission per role.
@@ -106,7 +198,6 @@ const RoleDetail = () => {
         </div>
       </section>
 
-      {/* Audition Modal */}
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-foreground/70 animate-hard-in">
           <BrutalCard tone="white" shadow="lg" className="w-full max-w-lg p-6 relative">
@@ -128,11 +219,11 @@ const RoleDetail = () => {
                   <input
                     type="file"
                     accept="video/mp4,video/quicktime"
-                    onChange={(e) => setFileName(e.target.files?.[0]?.name || "")}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="font-mono text-sm flex-1 bg-transparent outline-none"
                   />
                 </div>
-                {fileName && <div className="font-mono text-xs mt-1">★ {fileName}</div>}
+                {file && <div className="font-mono text-xs mt-1">★ {file.name}</div>}
               </label>
 
               <label className="block">
@@ -140,6 +231,7 @@ const RoleDetail = () => {
                 <textarea
                   required
                   rows={3}
+                  maxLength={1000}
                   value={coverNote}
                   onChange={(e) => setCoverNote(e.target.value)}
                   placeholder="Why you for this role?"
