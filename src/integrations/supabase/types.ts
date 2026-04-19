@@ -14,16 +14,181 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      applications: {
+        Row: {
+          cover_note: string | null
+          created_at: string
+          id: string
+          model_id: string
+          portfolio_link: string | null
+          role_id: string
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          cover_note?: string | null
+          created_at?: string
+          id?: string
+          model_id: string
+          portfolio_link?: string | null
+          role_id: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          cover_note?: string | null
+          created_at?: string
+          id?: string
+          model_id?: string
+          portfolio_link?: string | null
+          role_id?: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          height_cm: number | null
+          id: string
+          is_featured: boolean
+          is_pro: boolean
+          name: string
+          photo_url: string | null
+          portfolio_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          height_cm?: number | null
+          id?: string
+          is_featured?: boolean
+          is_pro?: boolean
+          name?: string
+          photo_url?: string | null
+          portfolio_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          height_cm?: number | null
+          id?: string
+          is_featured?: boolean
+          is_pro?: boolean
+          name?: string
+          photo_url?: string | null
+          portfolio_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          description: string
+          director_id: string
+          id: string
+          is_open: boolean
+          location: string
+          pay_rate: number
+          requirements: Json | null
+          title: string
+          type: Database["public"]["Enums"]["role_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          director_id: string
+          id?: string
+          is_open?: boolean
+          location?: string
+          pay_rate?: number
+          requirements?: Json | null
+          title: string
+          type?: Database["public"]["Enums"]["role_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          director_id?: string
+          id?: string
+          is_open?: boolean
+          location?: string
+          pay_rate?: number
+          requirements?: Json | null
+          title?: string
+          type?: Database["public"]["Enums"]["role_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "model" | "director"
+      application_status: "pending" | "shortlisted" | "rejected" | "selected"
+      role_type: "commercial" | "editorial" | "bollywood" | "ramp"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +315,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["model", "director"],
+      application_status: ["pending", "shortlisted", "rejected", "selected"],
+      role_type: ["commercial", "editorial", "bollywood", "ramp"],
+    },
   },
 } as const
