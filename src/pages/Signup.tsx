@@ -5,11 +5,13 @@ import { BrutalCard } from "@/components/brutal/BrutalCard";
 import { BrutalButton } from "@/components/brutal/BrutalButton";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
-type Role = "MODEL" | "DIRECTOR";
+type Role = "model" | "director";
 
 const Signup = () => {
-  const [role, setRole] = useState<Role>("MODEL");
+  const [role, setRole] = useState<Role>("model");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -17,17 +19,40 @@ const Signup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pw.length < 6) {
+      toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "WELCOME TO SPOTLIGHT ★",
-        description: `Account ready for ${role}. Connect Lovable Cloud to persist this.`,
-      });
-      navigate("/");
-    }, 700);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: pw,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { name, role },
+      },
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "WELCOME TO SPOTLIGHT ★",
+      description: `Account created as ${role.toUpperCase()}.`,
+    });
+    navigate(role === "director" ? "/dashboard/director" : "/dashboard/model", { replace: true });
+  };
+
+  const google = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/login",
+    });
+    if (result.error) {
+      toast({ title: "Google sign-in failed", description: String(result.error), variant: "destructive" });
+    }
   };
 
   return (
@@ -52,9 +77,8 @@ const Signup = () => {
             Sapno Ki Duniya Mein Aapka Swagat Hai.
           </p>
 
-          {/* Role toggle */}
           <div className="grid grid-cols-2 gap-0 brutal-border-thick brutal-shadow-sm mb-6">
-            {(["MODEL", "DIRECTOR"] as Role[]).map((r, i) => (
+            {(["model", "director"] as Role[]).map((r, i) => (
               <button
                 key={r}
                 type="button"
@@ -62,12 +86,10 @@ const Signup = () => {
                 className={cn(
                   "py-3 font-display uppercase text-sm tracking-wider transition-colors",
                   i === 0 ? "border-r-[3px] border-foreground" : "",
-                  role === r
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-secondary/40"
+                  role === r ? "bg-primary text-primary-foreground" : "bg-background hover:bg-secondary/40"
                 )}
               >
-                {r === "MODEL" ? "I'm a Model" : "Casting Director"}
+                {r === "model" ? "I'm a Model" : "Casting Director"}
               </button>
             ))}
           </div>
@@ -75,10 +97,10 @@ const Signup = () => {
           <form onSubmit={submit} className="space-y-4">
             <Field label="Full Name" value={name} onChange={setName} placeholder="Aanya Kapoor" />
             <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@spotlight.in" />
-            <Field label="Password" type="password" value={pw} onChange={setPw} placeholder="min 8 characters" />
+            <Field label="Password" type="password" value={pw} onChange={setPw} placeholder="min 6 characters" />
 
             <BrutalButton type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Rolling…" : `Sign Up as ${role} →`}
+              {loading ? "Rolling…" : `Sign Up as ${role.toUpperCase()} →`}
             </BrutalButton>
 
             <div className="relative my-2 text-center">
@@ -86,9 +108,12 @@ const Signup = () => {
               <div className="absolute left-0 right-0 top-1/2 h-[3px] bg-foreground -z-0" />
             </div>
 
-            <BrutalButton type="button" variant="outline" size="lg" className="w-full">
+            <BrutalButton type="button" variant="outline" size="lg" className="w-full" onClick={google}>
               <span className="text-lg">G</span> Continue with Google
             </BrutalButton>
+            <p className="font-mono text-[11px] opacity-60 text-center">
+              Google signups default to MODEL role. Switch in your dashboard.
+            </p>
           </form>
 
           <p className="font-mono text-sm mt-6 text-center">
@@ -104,18 +129,8 @@ const Signup = () => {
 };
 
 const Field = ({
-  label,
-  type = "text",
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  type?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) => (
+  label, type = "text", value, onChange, placeholder,
+}: { label: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string; }) => (
   <label className="block">
     <div className="font-display uppercase text-xs mb-2">{label}</div>
     <input
