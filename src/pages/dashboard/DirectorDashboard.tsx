@@ -41,6 +41,7 @@ const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [openAppId, setOpenAppId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
