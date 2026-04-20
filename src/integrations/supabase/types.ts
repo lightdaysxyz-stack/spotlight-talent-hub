@@ -58,6 +58,41 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          application_id: string
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          body: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
@@ -182,6 +217,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_thread_participant: {
+        Args: { _application_id: string; _user_id: string }
         Returns: boolean
       }
     }
