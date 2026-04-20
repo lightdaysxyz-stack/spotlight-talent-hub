@@ -22,6 +22,8 @@ export const Footer = () => (
           <li><Link to="/pricing" className="hover:text-secondary">Pricing</Link></li>
           <li><Link to="/signup" className="hover:text-secondary">Sign Up</Link></li>
           <li><Link to="/login" className="hover:text-secondary">Login</Link></li>
+          <li><Link to="/about" className="hover:text-secondary">About</Link></li>
+          <li><Link to="/contact" className="hover:text-secondary">Contact</Link></li>
         </ul>
       </div>
       <div>
