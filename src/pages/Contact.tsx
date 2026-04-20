@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Clock, Instagram, Youtube, Twitter } from "lucide-react";
+import { Mail, Instagram, Youtube, Twitter } from "lucide-react";
 import { useState } from "react";
 
 const Contact = () => {
@@ -118,28 +118,7 @@ const Contact = () => {
                 <Mail size={18} className="mt-0.5" />
                 <div>
                   <div className="font-bold">Email</div>
-                  <a href="mailto:hello@spotlight.in" className="hover:underline">hello@spotlight.in</a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <Phone size={18} className="mt-0.5" />
-                <div>
-                  <div className="font-bold">Phone</div>
-                  <a href="tel:+919876543210" className="hover:underline">+91 98765 43210</a>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <MapPin size={18} className="mt-0.5" />
-                <div>
-                  <div className="font-bold">HQ</div>
-                  <span>Andheri West, Mumbai 400053</span>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <Clock size={18} className="mt-0.5" />
-                <div>
-                  <div className="font-bold">Hours</div>
-                  <span>Mon–Sat · 10:00 — 19:00 IST</span>
+                  <a href="mailto:lightdaysxyz@gmail.com" className="hover:underline">lightdaysxyz@gmail.com</a>
                 </div>
               </li>
             </ul>
