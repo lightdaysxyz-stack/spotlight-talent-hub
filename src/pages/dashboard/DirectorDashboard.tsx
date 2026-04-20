@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, ROLE_TYPES, ROLE_TYPE_LABEL, DbRoleType } from "@/lib/format";
+import { MessageThread } from "@/components/messaging/MessageThread";
 
 interface RoleRow {
   id: string;
@@ -375,6 +376,11 @@ const ApplicantModal = ({
             </a>
           </div>
         )}
+
+        <div className="mt-6 pt-5 border-t-[3px] border-foreground">
+          <div className="font-display uppercase text-xs mb-2">Direct Messages</div>
+          <MessageThread applicationId={app.id} counterpartName={app.profile?.name || "the model"} />
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3 pt-5 border-t-[3px] border-foreground">
           <div className="font-display uppercase text-xs">Set Status:</div>
