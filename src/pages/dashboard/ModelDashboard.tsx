@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, ROLE_TYPE_LABEL } from "@/lib/format";
+import { MessageThread } from "@/components/messaging/MessageThread";
+import { MessageCircle } from "lucide-react";
 
 interface ProfileRow {
   id: string;
@@ -40,6 +42,7 @@ const ModelDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [openThread, setOpenThread] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -235,17 +238,34 @@ const ModelDashboard = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {apps.map((a) => (
-                  <div key={a.id} className="border-[3px] border-foreground p-4 flex items-center justify-between gap-4 bg-background">
-                    <div className="min-w-0">
-                      <div className="font-display uppercase truncate">{a.roles?.title ?? "Role removed"}</div>
-                      <div className="font-mono text-xs opacity-60">
-                        {a.roles && `${ROLE_TYPE_LABEL[a.roles.type]} · ${a.roles.location} · ${formatINR(a.roles.pay_rate)}/day`}
+                {apps.map((a) => {
+                  const isOpen = openThread === a.id;
+                  return (
+                    <div key={a.id} className="border-[3px] border-foreground bg-background">
+                      <div className="p-4 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="font-display uppercase truncate">{a.roles?.title ?? "Role removed"}</div>
+                          <div className="font-mono text-xs opacity-60">
+                            {a.roles && `${ROLE_TYPE_LABEL[a.roles.type]} · ${a.roles.location} · ${formatINR(a.roles.pay_rate)}/day`}
+                          </div>
+                        </div>
+                        <StatusBadge status={a.status} />
+                        <BrutalButton
+                          variant={isOpen ? "primary" : "outline"}
+                          size="sm"
+                          onClick={() => setOpenThread(isOpen ? null : a.id)}
+                        >
+                          <MessageCircle size={14} /> {isOpen ? "Hide" : "Chat"}
+                        </BrutalButton>
                       </div>
+                      {isOpen && (
+                        <div className="p-4 border-t-[3px] border-foreground">
+                          <MessageThread applicationId={a.id} counterpartName="the director" />
+                        </div>
+                      )}
                     </div>
-                    <StatusBadge status={a.status} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </BrutalCard>
