@@ -39,34 +39,6 @@ const About = () => {
 
       <BollyDivider />
 
-      {/* Story */}
-      <section className="container py-16 md:py-24 grid gap-10 md:grid-cols-2 items-start">
-        <div>
-          <h2 className="font-display text-4xl md:text-5xl">Our Story</h2>
-          <div className="mt-6 space-y-4 font-mono text-base text-foreground/80">
-            <p>
-              In 2024, two friends — one a casting director, the other a frustrated actor — sat at a chai stall
-              in Andheri and listed everything broken about how India hires for screen.
-            </p>
-            <p>
-              Whatsapp groups. Endless DMs. Lost portfolios. Ghosting. Brokers asking ₹5,000 for an "audition slot".
-            </p>
-            <p>
-              Spotlight is the answer: a transparent, verified, neo-brutalist hiring stage where talent applies once
-              and gets seen by the people who actually decide.
-            </p>
-          </div>
-        </div>
-        <BrutalCard className="bg-primary text-primary-foreground p-8">
-          <div className="font-display text-6xl md:text-7xl leading-none">10K+</div>
-          <p className="font-mono text-sm uppercase tracking-wider mt-2">Models on stage</p>
-          <div className="font-display text-6xl md:text-7xl leading-none mt-8">320+</div>
-          <p className="font-mono text-sm uppercase tracking-wider mt-2">Roles cast this year</p>
-          <div className="font-display text-6xl md:text-7xl leading-none mt-8">14</div>
-          <p className="font-mono text-sm uppercase tracking-wider mt-2">Cities live</p>
-        </BrutalCard>
-      </section>
-
       {/* Values */}
       <section className="bg-foreground text-background py-16 md:py-24 border-y-[4px] border-foreground">
         <div className="container">
