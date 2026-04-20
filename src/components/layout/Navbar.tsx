@@ -16,6 +16,8 @@ export const Navbar = () => {
   const links = [
     { to: "/roles", label: "Open Roles" },
     { to: "/pricing", label: "Pricing" },
+    { to: "/about", label: "About" },
+    { to: "/contact", label: "Contact" },
   ];
 
   const handleSignOut = async () => {
